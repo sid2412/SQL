@@ -1,0 +1,97 @@
+Codeflix, a streaming video startup, is interested in measuring their user churn rate. This code will be answering the following questions about the company churn. 
+
+The project database is on the Codecademy website.
+
+1. Get familiar with the company.
+
+2. How many months has the company been operating? 
+
+3. Which months do you have enough information to calculate a churn rate?
+
+4. What segments of users exist?
+
+5. What is the overall churn trend since the company started?
+
+6. Compare the churn rates between user segments.
+
+7. Which segment of users should the company focus on expanding?
+
+WITH months AS
+(SELECT 
+   '2017-01-01' AS first_day,
+   '2017-01-31' AS last_day
+ UNION
+ SELECT
+   '2017-02-01' AS first_day,
+   '2017-02-28' AS last_day
+ UNION
+ SELECT 
+   '2017-03-01' AS first_day,
+   '2017-03-31' AS last_day
+),
+cross_join AS
+(SELECT *
+FROM subscriptions
+CROSS JOIN months
+), status AS
+(SELECT 
+   id, 
+   first_day AS 'month',
+   CASE
+     WHEN (
+       subscription_start < first_day 
+    AND (subscription_end >= first_day OR
+      subscription_end IS NULL
+         )
+    AND segment = 87
+          ) THEN 1
+     ELSE 0
+   END AS 'is_active_87',
+ CASE
+     WHEN (
+       subscription_start < first_day 
+    AND (subscription_end >= first_day OR
+      subscription_end IS NULL
+         )
+    AND segment = 30
+          ) THEN 1
+     ELSE 0
+   END AS 'is_active_30',
+   CASE
+     WHEN (
+       (subscription_end BETWEEN first_day AND last_day)
+       AND segment = 87
+           ) THEN 1
+       ELSE 0
+   END AS 'is_canceled_87',
+   CASE
+     WHEN (
+       (subscription_end BETWEEN first_day AND last_day)
+       AND segment = 30
+           ) THEN 1
+       ELSE 0
+   END AS 'is_canceled_30'
+ FROM cross_join
+), status_aggregate AS
+(SELECT 
+   month,
+   SUM(is_active_87) AS 'active_87',
+   SUM(is_active_30) AS 'active_30',
+   SUM(is_canceled_87) AS 'canceled_87',
+   SUM(is_canceled_30) AS 'canceled_30'
+FROM status
+GROUP BY month
+)
+SELECT 
+  month, 
+  round(1.0* canceled_87/active_87,2) AS 'churn_87',
+  round(1.0* canceled_30/active_30,2) AS 'churn_30'
+FROM status_aggregate;
+
+
+
+Query Results
+month	churn_87	churn_30
+2017-01-01	0.25	0.08
+2017-02-01	0.32	0.07
+2017-03-01	0.48	0.12

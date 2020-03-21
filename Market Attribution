@@ -1,0 +1,204 @@
+ATTRIBUTION QUERIES
+
+CoolTShirts sells shirts of all kinds, as long as they are T-shaped and cool. 
+Recently, CTS started a few marketing campaigns to increase website visits and purchases. 
+Using touch attribution, they’d like to map their customers’ journey: from initial visit to purchase. 
+They can use that information to optimize their marketing campaigns. 
+This project will guide you through some of that process.
+
+QUESTIONS:
+
+1. How many campaigns and sources does CoolTShirts use? Which source is used for each campaign?
+
+Use three queries:
+
+one for the number of distinct campaigns,
+one for the number of distinct sources,
+one to find how they are related.
+
+2. What pages are on the CoolTShirts website? Find the distinct values of the page_name column.
+
+
+3. How many first touches is each campaign responsible for?
+
+
+4. How many last touches is each campaign responsible for?
+
+5. How many visitors make a purchase?
+
+6. How many last touches on the purchase page is each campaign responsible for?
+
+7. CoolTShirts can re-invest in 5 campaigns. Given your findings in the project, which should they pick and why?
+
+QUERIES
+
+/* Basic data exploration */
+SELECT *
+FROM page_visits
+LIMIT 10;
+
+/* 1. */
+SELECT DISTINCT utm_campaign
+FROM page_visits;
+
+SELECT DISTINCT utm_source
+FROM page_visits;
+
+SELECT DISTINCT utm_campaign, utm_source, MIN(timestamp)
+FROM page_visits
+GROUP BY utm_source;
+
+/* 2. */
+SELECT DISTINCT page_name
+FROM page_visits;
+
+
+/* 3. */
+WITH first_touch AS (
+  SELECT user_id,
+        MIN(timestamp) AS 'first_touch_at'
+  FROM page_visits
+  GROUP BY user_id
+                    ),
+ft_attr AS (
+  SELECT ft.user_id,
+        ft.first_touch_at,
+        pv.utm_campaign
+  FROM first_touch AS 'ft'
+  JOIN page_visits AS 'pv'
+    ON ft.user_id = pv.user_id
+    AND ft.first_touch_at = pv.timestamp
+                )
+SELECT ft_attr.utm_campaign AS 'Number of first touches for each campaign',
+      COUNT(*)
+FROM ft_attr
+GROUP BY 1
+ORDER BY 2 DESC;
+
+/* 4. */
+WITH last_touch AS (
+  SELECT user_id,
+        MAX(timestamp) as last_touch_at
+  FROM page_visits
+  GROUP BY user_id
+                    ),
+  lt_attr AS (
+    SELECT lt.user_id,
+          lt.last_touch_at,
+          pv.utm_campaign
+    FROM last_touch as lt
+    JOIN page_visits as pv
+     ON lt.user_id = pv.user_id 
+      AND lt.last_touch_at = pv.timestamp
+              )
+  SELECT lt_attr.utm_campaign AS 'Number of last touches for each campaign',
+        COUNT(*)
+  FROM lt_attr
+  GROUP BY 1
+  ORDER BY 2 DESC;
+
+/* 5. */
+SELECT COUNT(DISTINCT user_id) AS 'No. of visitors that make a purchase'
+FROM page_visits
+WHERE page_name = '4 - purchase';
+
+/* 6. */
+WITH last_touch AS (
+  SELECT user_id,
+        MAX(timestamp) AS last_touch_at
+  FROM page_visits
+  WHERE page_name = '4 - purchase'
+  GROUP BY user_id
+                    ),
+lt_attr AS (
+  SELECT lt.user_id,
+        lt.last_touch_at,
+        pv.utm_campaign
+  FROM last_touch AS lt
+  JOIN page_visits AS pv
+   ON lt.user_id = pv.user_id
+    AND lt.last_touch_at = pv.timestamp
+                  )
+  SELECT lt_attr.utm_campaign AS 'Last touch campaigns on the purchase page',
+        COUNT(*)
+  FROM lt_attr
+  GROUP BY 1
+  ORDER BY 2 DESC;
+
+QUERY RESULTS
+
+page_name			      timestamp	          user_id		utm_campaign		              utm_source
+1 - landing_page	  2018-01-24 03:12:16	  10006	  getting-to-know-cool-tshirts	nytimes
+2 - shopping_cart	  2018-01-24 04:04:16	  10006	  getting-to-know-cool-tshirts	nytimes
+3 - checkout		    2018-01-25 23:10:16	  10006	  weekly-newsletter		          email
+1 - landing_page	  2018-01-25 20:32:02	  10030	  ten-crazy-cool-tshirts-facts	buzzfeed
+2 - shopping_cart	  2018-01-25 23:05:02	  10030	  ten-crazy-cool-tshirts-facts	buzzfeed
+3 - checkout		    2018-01-28 13:26:02	  10030	  retargetting-campaign		      email
+4 - purchase		    2018-01-28 13:38:02	  10030	  retargetting-campaign		      email
+1 - landing_page	  2018-01-05 18:31:17	  10045	  getting-to-know-cool-tshirts	nytimes
+2 - shopping_cart	  2018-01-05 21:16:17	  10045	  getting-to-know-cool-tshirts	nytimes
+3 - checkout		    2018-01-09 03:05:17	  10045	  retargetting-ad			          facebook
+
+1. utm_campaign
+getting-to-know-cool-tshirts
+weekly-newsletter
+ten-crazy-cool-tshirts-facts
+retargetting-campaign
+retargetting-ad
+interview-with-cool-tshirts-founder
+paid-search
+cool-tshirts-search
+
+1. utm_source
+nytimes
+email
+buzzfeed
+facebook
+medium
+google
+
+1. utm_campaign				              utm_source	MIN(timestamp)
+ten-crazy-cool-tshirts-facts		    buzzfeed	  2018-01-01 06:37:30
+retargetting-campaign			          email		    2018-01-02 15:02:56
+retargetting-ad				              facebook	  2018-01-02 18:09:53
+cool-tshirts-search			            google		  2018-01-01 05:04:18
+interview-with-cool-tshirts-founder	medium		  2018-01-01 01:42:56
+getting-to-know-cool-tshirts		    nytimes		  2018-01-01 00:58:13
+
+2. page_name
+1 - landing_page
+2 - shopping_cart
+3 - checkout
+4 - purchase
+
+3. Number of first touches for each campaign	COUNT(*)
+interview-with-cool-tshirts-founder		        622
+getting-to-know-cool-tshirts			            612
+ten-crazy-cool-tshirts-facts			            576
+cool-tshirts-search				                    169
+
+4. Number of last touches for each campaign	  COUNT(*)
+weekly-newsletter				                      447
+retargetting-ad					                      443
+retargetting-campaign				                  245
+getting-to-know-cool-tshirts			            232
+ten-crazy-cool-tshirts-facts			            190
+interview-with-cool-tshirts-founder	          184
+paid-search					                          178
+cool-tshirts-search				                    60
+
+5. No. of visitors that make a purchase
+		              361
+
+6. Last touch campaigns on the purchase page	COUNT(*)
+weekly-newsletter				                      115
+retargetting-ad					                      113
+retargetting-campaign				                  54
+paid-search					                          52
+getting-to-know-cool-tshirts			            9
+ten-crazy-cool-tshirts-facts			            9
+interview-with-cool-tshirts-founder		        7
+cool-tshirts-search				                    2
+
+7. From query results in question 4. and 6. we can see that that top 5 campaigns for maximum number of first touches and 
+last touches that make a purchase are the same. So clearly, the company should reinvest in those 5 campaigns. 
